@@ -1,0 +1,289 @@
+function hexToRgbColor(h) {
+	return "rgb(" + hexToRgb(h) + ")";
+}
+
+function hexToRgbBackgroundColor(h) {
+	return "rgba(" + hexToRgb(h) + ',0.1' + ")";
+}
+
+function hexToRgb(h) {
+	// en caso de no sea correcto
+	if (h.length != 7) {
+		h = "#FFFFFF"
+	}
+	var r = parseInt((cutHex(h)).substring(0, 2), 16), g = parseInt((cutHex(h)).substring(2, 4), 16), b = parseInt((cutHex(h)).substring(4, 6), 16)
+	return r + ',' + g + ',' + b;
+}
+
+function cutHex(h) {
+	return (h.charAt(0) == "#") ? h.substring(1, 7) : h
+}
+
+function personalizarCss(jQuery) {
+
+	if (typeof color != 'undefined' && color != '') {
+		jQuery('.e_backgroundColorCtl').css("background-color", hexToRgbBackgroundColor(color));
+		jQuery('.e_backgroundColorSolidoCtl').css("background-color", hexToRgbColor(color));
+		jQuery('.e_colorCtl').css("color", hexToRgbColor(color));
+	}
+	if (typeof colorFondo != 'undefined' && colorFondo != '') {
+		jQuery('.e_backgroundColorCtl').css('background-color', colorFondo);
+	}
+	if (typeof colorTextoDes != 'undefined' && colorTextoDes != '') {
+		jQuery('.e_colorTextoDestacadoCtl').css('color', colorTextoDes);
+	}
+	if (typeof colorBorde != 'undefined' && colorBorde != '') {
+		jQuery('.e_colorBordeCtl').css({
+			'border-width' : '1px',
+			'border-style' : 'solid',
+			'border-color' : colorBorde,
+			'padding' : '5px'
+		});
+	}
+	if (typeof colorTextoExt != 'undefined' && colorTextoExt != '') {
+		jQuery('.e_colorTextoExteriorCtl').css('color', colorTextoExt);
+	}
+	if (typeof masInfo != 'undefined' && masInfo != '') {
+		jQuery("#moreInfoCtl").attr("href", masInfo);
+		jQuery('#moreInfoCtl').removeClass('ocultar');
+		jQuery('.eCalculadoraCetelem').addClass('masInfo');
+	}
+	if (typeof fontSize != 'undefined' && fontSize != '') {
+		try {
+			var tamano = parseInt(fontSize);
+			var claseFuente;
+			if (tamano <= 12) {
+				claseFuente = "fuente12";
+				return true;
+			} else if (tamano <= 14) {
+				claseFuente = "fuente14";
+			} else if (tamano <= 16) {
+				claseFuente = "fuente16";
+			} else {
+				claseFuente = "fuente18";
+			}
+
+		} catch (err) {
+			claseFuente = "fuente12";
+		}
+		jQuery('.eCalculadoraCetelem').removeClass("fuente12");
+		jQuery('.eCalculadoraCetelem').addClass(claseFuente);
+	}
+}
+
+function calcular(jQuery, listadoMeses, codPromocion, material) {
+	var plazo = jQuery('#financiacionCtl').val().split(';')[0];
+	if (cantidad == '') {
+		cantidad = jQuery('#cuotaCtl').val();
+	}
+	if (plazo != '' && cantidad != '') {
+		jQuery('#financiacionCtl').attr('disabled', true);
+		jQuery('.eCalculadoraCetelem').addClass('cargando');
+		jQuery('.circle-cetelem-signs-mas').addClass('no-click-buttom');
+		jQuery('.circle-cetelem-signs-menos').addClass('no-click-buttom');
+		jQuery(".errorCtl").addClass('ocultar');
+		jQuery.ajax({
+			crossDomain : true,
+			url : server + "/eCommerceCalculadora/cetelem/calculadora.htm",
+			dataType : 'jsonp', /* CORS Method */
+			contentType : "application/json; charset=utf-8;",
+			cache : false,
+			async : true,
+			jsonp : false,
+			data : {
+				plazo : plazo,
+				cantidad : cantidad,
+				codCentro : codCentro,
+				listadoMeses : listadoMeses,
+				codPromocion : codPromocion,
+				material : jQuery('#financiacionCtl').val().split(';')[5],
+				producto : jQuery('#financiacionCtl').val().split(';')[1],
+				promocion : jQuery('#financiacionCtl').val().split(';')[2],
+				fechaPromocion : jQuery('#financiacionCtl').val().split(';')[3],
+				aplazamiento : jQuery('#financiacionCtl').val().split(';')[4]
+			},
+			jsonpCallback : 'cetelem',
+			success : function(data) {
+
+				var jsonObject = data.datosCalculadora;
+				if (jsonObject.lWebWarning.length == 0) {
+					jQuery(".errorCtl").addClass('ocultar');
+					completarCalculadora(jQuery, jsonObject);
+				} else {
+					completarCalculadoraError(jQuery);
+				}
+
+			},
+			error : function(xhr, status, errorThrown) {
+				completarCalculadoraError(jQuery);
+			},
+			complete : function() {
+				jQuery('.eCalculadoraCetelem').removeClass('cargando');
+				jQuery('.circle-cetelem-signs-mas').removeClass('no-click-buttom');
+				jQuery('.circle-cetelem-signs-menos').removeClass('no-click-buttom');
+				jQuery('#financiacionCtl').removeAttr('disabled');
+			}
+		});
+	}
+}
+
+function completarCalculadoraError(jQuery) {
+
+	jQuery("#totalrCtl, #importeMensualidadCtl, #cetelemTotalAdeudado, #tinCetelem, .taeCetelem").html("");
+	jQuery(".errorCtl").removeClass('ocultar');
+}
+
+function determina_tamanoFuente(jQuery) {
+	var tamanoFuente = 12;
+	if (jQuery('.eCalculadoraCetelem').hasClass('fuente14')) {
+		tamanoFuente = 14;
+	}
+	;
+	if (jQuery('.eCalculadoraCetelem').hasClass('fuente16')) {
+		tamanoFuente = 16;
+	}
+	;
+	if (jQuery('.eCalculadoraCetelem').hasClass('fuente18')) {
+		tamanoFuente = 18;
+	}
+	;
+	return tamanoFuente;
+}
+
+function adaptarCalculadora(jQuery, adaptar) {
+
+	jQuery.fn.elementRealWidth = function() {
+		$clone = this.clone().css("visibility", "hidden").appendTo(jQuery('body'));
+		var $width = $clone.width();
+		$clone.remove();
+		return $width;
+	};
+
+	// responsive
+	var tamanoFuente = determina_tamanoFuente(jQuery);
+	var anchuraUnaColumna = 310;
+
+	switch (tamanoFuente) {
+	case 14:
+		anchuraUnaColumna = 340;
+		break;
+	case 16:
+		anchuraUnaColumna = 400;
+		break;
+	case 18:
+		anchuraUnaColumna = 420;
+	}
+
+	var anchuraContenedor = jQuery(".eCalculadoraCetelem").parent().width();
+	if (anchuraContenedor == 0) {
+		anchuraContenedor = jQuery(".eCalculadoraCetelem").parent().elementRealWidth();
+	}
+	if (anchuraContenedor < anchuraUnaColumna) {
+		if (adaptar) {
+			jQuery('.eCalculadoraCetelem').addClass('unaColumna');
+		}
+	} else {
+
+		if (adaptar) {
+			jQuery('.eCalculadoraCetelem').removeClass('unaColumna');
+		}
+	}
+}
+
+function completarCalculadora(jQuery, calcOut) {
+
+	jQuery("#importeMensualidadCtl").html(calcOut.cuotaMensualS);
+	jQuery("#cetelemTotalAdeudado").html(calcOut.importeTotalAdeudadoS + " &euro;");
+	jQuery("#tinCetelem").html(calcOut.tinS + " %");
+	jQuery(".taeCetelem").html(calcOut.taeS + " %");
+	jQuery("#vigenciaCetelem").html(calcOut.fechaVigencia);
+	
+	jQuery("#cetelemPrimeraCuota").html(calcOut.primerasMensualidadesS + " &euro;");
+	jQuery("#cetelemUltimaCuota").html(calcOut.ultimaCuotaS + " &euro;");
+	jQuery("#cetelemComisionFormalizacion").html(calcOut.comisionFormalizacion + " &euro;");
+	jQuery("#cetelemPorcentajeComisionFormalizacion").html(calcOut.porcentajeComisionFormalizacionS + " %");
+	jQuery("#cetelemTotalFinanciar").html(calcOut.importeFinanciadoS + " &euro;");
+	jQuery("#ultimaCuotaConComision").html(calcOut.cuotaMensualS);
+	
+	jQuery("#cetelemTotalIntereses").html(calcOut.interesesS + " &euro;");
+	jQuery("#cetelemCosteTotalCredito").html(calcOut.comisionFormalizacion + " &euro;");
+	jQuery("#cetelemCosteTotalCreditoConInteres").html(calcOut.interesesS + " &euro;");
+	jQuery("#cetelemPrecioTotalPlazos").html(calcOut.importeTotalAdeudadoS + " &euro;");
+	jQuery("#cetelemAdquisicionContado").html(calcOut.importeFinanciadoS + " &euro;");
+	if (calcOut.gratuito) {
+		jQuery(".e_sinIntCtl").removeClass('ocultar');
+		jQuery(".e_conIntCtl").addClass('ocultar');
+	} else {
+		jQuery(".e_sinIntCtl").addClass('ocultar');
+		jQuery(".e_conIntCtl").removeClass('ocultar');
+	}
+	
+	var divSinInteres = jQuery('#divSinInteres');
+	var spanTaeSinInterese = jQuery('#spanTaeSinInterese');
+	if (calcOut.tinS == '0,00'
+		&& calcOut.taeS == '0,00') {
+		divSinInteres.removeClass('ocultar');
+		spanTaeSinInterese.removeClass('ocultar');
+	}else{
+		divSinInteres.addClass('ocultar');
+		spanTaeSinInterese.addClass('ocultar');
+	}
+}
+
+function getDataCombo(jQuery, comboId, jsonObject) {
+
+	if (jsonObject != "") {
+
+		for ( var n = 0; n < jsonObject.length; n++) {
+
+			if (jsonObject[n].selected === null) {
+				jQuery("#" + comboId).append('<option value="' + jsonObject[n].codigo + '">' + jsonObject[n].valor + '</option>');
+			} else {
+				jQuery('#financiacionCtl').val(jsonObject[n].codigo);
+				jQuery("#" + comboId).append('<option value="' + jsonObject[n].codigo + '" selected >' + jsonObject[n].valor + '</option>');
+			}
+		}
+	}
+}
+
+function mostrarMasInfo(jQuery) {
+	jQuery('#eCalculadoraCetelemDiv').on('click', '.e_enlaceVerMas', function() {
+		jQuery('.eCalculadoraCetelem').addClass('mostrarMasInfo');
+		return false;
+	});
+	jQuery('#eCalculadoraCetelemDiv').on('click', '.e_enlaceVerMenos', function() {
+		jQuery('.eCalculadoraCetelem').removeClass('mostrarMasInfo');
+		return false;
+	});
+}
+
+
+function inicializarUnContenedor(jQuery) {
+
+	detectaExplorer();
+
+	jQuery('.botMasInfoCtl').on('click', function() {
+		$('.simboloMasCtl').toggle();
+		$('.simboloMenosCtl').toggle();
+		$('.cont_masInfoCtl').toggle();
+	});
+
+}
+
+function detectaExplorer(jQuery) {
+	var infoNavegador = window.navigator.userAgent;
+
+	var msie = infoNavegador.indexOf('MSIE ');
+	var trident = infoNavegador.indexOf('Trident/');
+	var edge = infoNavegador.indexOf('Edge/');
+
+	if (msie > 0 || trident > 0 || edge > 0) {
+		jQuery('.eCalculadoraCetelem').addClass('explorerCtl');
+	}
+	
+	var firefox = infoNavegador.indexOf('Firefox/');
+	
+	if( firefox > 0 ){
+		jQuery('.eCalculadoraCetelem').addClass('firefoxCtl');
+	}
+}

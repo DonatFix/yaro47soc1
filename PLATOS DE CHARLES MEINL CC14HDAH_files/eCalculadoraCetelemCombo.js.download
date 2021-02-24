@@ -1,0 +1,136 @@
+﻿﻿if (server != '') {
+	(function(window, document) {
+		"use strict"; /* Wrap code in an IIFE */
+		
+		// Localize jQuery variables
+		var jQueryCetelem;
+		/** ****** Load jQuery if not present ******** */
+		if (window.jQuery === undefined || (window.jQuery.fn.jquery.split('.')[0] === '1' && Number(window.jQuery.fn.jquery.split('.')[1]) < 10)) {
+			var script_tag = document.createElement('script');
+			script_tag.setAttribute("type", "text/javascript");
+			script_tag.setAttribute("src", server + "/eCommerceCalculadora/resources/js/jquery/jquery.js");
+			if (script_tag.readyState) {
+				script_tag.onreadystatechange = function() { // For old versions of IE
+					if (this.readyState == 'complete' || this.readyState == 'loaded') {
+						scriptLoadHandler();
+					}
+				};
+			} else {
+				script_tag.onload = scriptLoadHandler;
+			}
+			// Try to find the head, otherwise default to the documentElement
+			(document.getElementsByTagName("head")[0] || document.documentElement).appendChild(script_tag);
+		} else {
+			// The jQuery version on the window is the one we want to use
+			jQueryCetelem = window.jQuery;
+			construyeCalculadora(jQueryCetelem);
+		}
+
+		function scriptLoadHandler() {
+			// Restore $ and window.jQuery to their previous values and store the
+			// new jQuery in our local jQuery variable
+			jQueryCetelem = window.jQuery.noConflict(true);
+			// Call our main function
+			construyeCalculadora(jQueryCetelem);
+		}
+
+		
+	}(window, document)); /* end IIFE */
+}
+
+function loadScriptCombo(url, callback) {
+	/* Load script from url and calls callback once it's loaded */
+	var scriptTag = document.createElement('script');
+	scriptTag.setAttribute("type", "text/javascript");
+	scriptTag.setAttribute("src", url);
+	if (typeof callback !== "undefined") {
+		if (scriptTag.readyState) {
+			/* For old versions of IE */
+			scriptTag.onreadystatechange = function() {
+				if (this.readyState === 'complete' || this.readyState === 'loaded') {
+					callback();
+				}
+			};
+		} else {
+			scriptTag.onload = callback;
+		}
+	}
+	(document.getElementsByTagName("head")[0] || document.documentElement).appendChild(scriptTag);
+};
+
+function construyeCalculadora(jQueryCetelem) {
+	jQueryCetelem(document).ready(function($) {
+		cantidad = cantidad.replace(",", ".");
+		var listadoMesesCalculadora = "";
+		if (typeof listadoMeses != 'undefined' && listadoMeses != '') {
+			listadoMesesCalculadora = listadoMeses;
+		}
+		var codPromocionCalculadora = "";
+		if (typeof codPromocion != 'undefined' && codPromocion != '') {
+			codPromocionCalculadora = codPromocion;
+		}
+		var materialCalc = "";
+				if (typeof material != 'undefined' && material != ''
+					&& material.length == 3) {
+			materialCalc = material;
+		}
+		loadScriptCombo(server + "/eCommerceCalculadora/resources/js/eCalculadoraCetelemComboAux.js", function() {
+			// jQuery.support.cors = true;
+			$.ajax({
+				crossDomain : true,
+				url : server + '/eCommerceCalculadora/cetelem/getEcommerceCalculadoraCombo.htm',
+				dataType : 'jsonp', /* CORS Method */
+				contentType : 'application/json; charset=utf-8;',
+				cache : false,
+				data : {
+					cantidad : cantidad,
+					codCentro : codCentro,
+					listadoMeses : listadoMesesCalculadora,
+					codPromocion : codPromocionCalculadora,
+					material: materialCalc
+				},
+				type : 'POST',
+				method : 'POST',
+				async : true,
+				jsonp : false,
+				jsonpCallback : 'cetelem',
+				success : function(data) {
+					$('#eCalculadoraCetelemDiv').empty();
+					$.each(data.listCss, function(key, scriptTag) {
+						$('head').append("<link href='" + server + scriptTag + "' rel='stylesheet' type='text/css' />");
+					});
+					// analytic
+					$('head').append(data.analytic);
+					$('head').append(data.googleAnalytic);
+					$('#eCalculadoraCetelemDiv').append(data.codeHtml);
+					// jQuery(document).ready(function($) {
+					$(".calcularCtl").on('click', function() {
+						calcular($, listadoMesesCalculadora, codPromocionCalculadora, materialCalc);
+					});
+					$("#financiacionCtl").on('change', function() {
+						if ($(this).val() != '') {
+							calcular($, listadoMesesCalculadora, codPromocionCalculadora, materialCalc);
+						}
+					});
+					$(window).resize(function() {
+						adaptarCalculadora($, true);
+					});
+					personalizarCss($);
+					adaptarCalculadora($, true);
+					mostrarMasInfo($);
+					// });
+					if (data.error == null) {
+						getDataCombo($, 'financiacionCtl', data.listData);
+								calcular($, listadoMesesCalculadora, codPromocionCalculadora, materialCalc);
+					} else {
+						$(".errorCtl").html(data.error).removeClass('ocultar');
+					}
+				},
+				error : function(xhr, status, errorThrown) {
+					$(".errorCtl").show();
+				}
+			});
+
+		});
+	});
+};
